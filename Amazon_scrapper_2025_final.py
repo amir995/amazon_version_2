@@ -15,51 +15,71 @@ df = pd.read_excel("Competitors.xlsx")
 df.head()
 result = pd.DataFrame(columns=['ASIN', 'product name', 'price', 'date', 'time', 'Fetched', "Ranking", "Category", "Star", "Rating_count"])
 
-print(result)
+#print(result)
 
 
-def New_Part(soup,url):
-    time.sleep(2.5)
-    try:
-        table = soup.find("table", {"id": "productDetails_detailBullets_sections1"})
-        rows = table.find_all("tr")
-        last_row = rows[-1]
-        column = last_row.find("td")
-        last_row = rows[-1]
-        column = last_row.find("td")
-    except:
-        table = soup.find("table", {"id": "productDetails_detailBullets_sections1"})
-        rows = table.find_all("tr")
-        last_row = rows[-1]
-        column = last_row.find("td")
-        last_row = rows[-1]
-        column = last_row.find("td")
-
-
-    text = column.text
-    # Use regex to extract rank and category
-    matches = re.findall(r"#([\d,]+) in ([\w\s&]+)", text)
+def New_Part(soup, url, headers):
+    page_source = soup.text
+    match = re.search(r"Best Sellers Rank\s+.*", page_source)
     ranking = ""
     category = ""
-    # Print extracted data
-    try:
-        # Print extracted data
-        ranking, category = matches[1]
-
-
-    except:
-        for rank, cate in matches:
-            ranking = rank
-            category = cate
-
+    star = ""
+    rating_count = ""
+    # Output: Full "Best Sellers Rank" sentence
     stars_data = soup.find("span", {"id": "acrPopover"}).text
 
     star = re.search(r"\d+\.\d+", stars_data).group()  # Find the first decimal number
 
     rating_count_data = soup.find("span", {"id": "acrCustomerReviewText"}).text
-    #rating_count = re.search(r"\d+", rating_count_data).group()  # Find the first number
+    # rating_count = re.search(r"\d+", rating_count_data).group()  # Find the first number
     rating_count = rating_count_data
-    return ranking, category, star,rating_count
+
+    if "ratings" or "rating" in rating_count:
+        rating_count = rating_count_data.replace("ratings","")
+    else:
+        pass
+
+    try:
+        text = match.group()
+        matches = re.findall(r"#\d+[^#]+?(?=  )", text)
+        rank_data = matches[1]
+
+        rank_data_ls = str(rank_data).strip().split("in")
+        if len(rank_data_ls)>1:
+            ranking = rank_data_ls[0]
+            category = rank_data_ls[1].strip()
+        else:
+            ranking = "None"
+            category = "None"
+
+    except Exception as e:
+        checker = 1
+        while (not match) or checker<10:
+            session = requests.Session()
+            session.headers.update(headers)
+            url = "https://www.amazon.com/dp/B0B2D5WTZ5"
+            response = session.get(url, headers=requests.session().headers.update(headers))
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            page_source = soup.text
+            match = re.search(r"Best Sellers Rank\s+.*", page_source)
+            ranking = ""
+            category = ""
+            # Output: Full "Best Sellers Rank" sentence
+            text = match.group()
+            matches = re.findall(r"#\d+[^#]+?(?=  )", text)
+            rank_data = matches[1]
+
+            rank_data_ls = str(rank_data).strip().split("in")
+            if len(rank_data_ls) > 1:
+                ranking = rank_data_ls[0]
+                category = rank_data_ls[1].strip()
+            else:
+                ranking = "None"
+                category = "None"
+
+
+    return ranking, category, star, rating_count
 def Main_code(url):
     global result
     useragent_list = [
@@ -170,7 +190,7 @@ def Main_code(url):
                 price = price1.find('span', class_='a-price a-text-price a-size-medium apexPriceToPay').text
                 price = price.split("$")
                 price = price[1]
-                ranking, category, star, rating_count = New_Part(soup,url)
+                ranking, category, star, rating_count = New_Part(soup,url, headers)
 
                 print(price)
                 print(ranking)
@@ -192,7 +212,7 @@ def Main_code(url):
                 price_2 = soup.find(class_='a-price-fraction').text
                 price_1 = price_1.replace(".", "")
                 price = price_1 + "." + price_2
-                ranking, category, star, rating_count = New_Part(soup,url)
+                ranking, category, star, rating_count = New_Part(soup,url, headers)
 
 
 
@@ -212,7 +232,7 @@ def Main_code(url):
         print(price)
         print(date)
         print(time_1)
-        ranking, category, star, rating_count = New_Part(soup,url)
+        ranking, category, star, rating_count = New_Part(soup,url, headers)
         print(ranking)
         print(category)
         print(star)
