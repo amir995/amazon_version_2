@@ -112,6 +112,8 @@ for index, row in df.iterrows():
         url = "https://www." + url
     Main_code(url)
 
-print(result)
+#print(result)
 mergedResult = df.merge(result, on="ASIN", how="left")
-print(mergedResult.head())
+#print(mergedResult.head())
+mergedResult.to_csv("Amazon_Scraper_Output.csv", index=False)
+print("Data saved to Amazon_Scraper_Output.csv")
